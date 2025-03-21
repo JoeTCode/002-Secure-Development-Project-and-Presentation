@@ -1,0 +1,11 @@
+# Ignore Node.js dependencies
+node_modules/
+
+# Ignore all .env variables
+.env
+
+# Ignore DB volume data 
+postgres_data/
+
+# Ignore automatically created MacOS file
+.DS_Store
