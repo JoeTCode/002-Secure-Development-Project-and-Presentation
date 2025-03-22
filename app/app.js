@@ -37,10 +37,18 @@ fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
 // Store who is currently logged in
 let currentUser = null;
 
+// Register POST request
 app.post('/register', async (req, res) => {
     const email = req.body.email_input;
     const username = req.body.username_input;
     const password = req.body.password_input;
+    if (!email|| !username || !password) {
+        return res.sendFile(__dirname + '/public/html/register.html', (err) => {
+            if (err){
+                console.log(err);
+            };
+        });
+    }
     const sql = 'INSERT INTO users(email, username, password) VALUES($1, $2, $3) RETURNING *';
     const values = [email, username, password];
     try {

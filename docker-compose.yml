@@ -3,8 +3,8 @@ services:
     image: postgres:latest
     container_name: postgres_db
     restart: unless-stopped
-    env_file: ../.env
     environment:
+      - DEBUG "true"
       - POSTGRES_USER=$POSTGRESDB_USER
       - POSTGRES_PASSWORD=$POSTGRESDB_ROOT_PASSWORD
       - POSTGRES_DB=$POSTGRESDB_DATABASE
@@ -18,15 +18,15 @@ services:
       - db
     build: .
     restart: unless-stopped
-    env_file: ../.env
     ports:
       - "3000:3000"
     environment:
-      - DB_HOST=$DB_HOST
+      - DEBUG=true
+      - DB_HOST=$DB_HOSTNAME
       - DB_USER=$POSTGRESDB_USER
       - DB_PASSWORD=$POSTGRESDB_ROOT_PASSWORD
       - DB_NAME=$POSTGRESDB_DATABASE
-      - DB_PORT=5432
+      - DB_PORT=$DB_PORT
     stdin_open: true
     tty: true
 
