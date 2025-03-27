@@ -16,19 +16,19 @@ Posts are loaded from a local JSON file called posts.json. Posts are loaded on t
 
 Normal Flow:
 
-`docker-compose up --build` to start the app.
+1. `docker-compose up --build` to start the app.
 
-`Control + C` to stop the app.
+2. `Control + C` to stop the app.
 
-`docker-compose down` to clean up the environment (removes containers but preserves the DB data).
+3. `docker-compose down` to clean up the environment (removes containers but preserves the DB data).
 
 Making changes to DB Flow:
 
-`Control + C` to stop the app.
+1. `Control + C` to stop the app.
 
-`docker-compose down -v` to remove the data in stored DB.
+2. `docker-compose down -v` to remove the data in stored DB.
 
-`docker-compose up --build` to re-start the app.
+3. `docker-compose up --build` to re-start the app.
 
 `docker-compose up --build` re-builds the Docker images and starts up the Docker containers (i.e. starts the app).
 
