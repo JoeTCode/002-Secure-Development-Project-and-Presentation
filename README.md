@@ -11,3 +11,27 @@ Posts can be edited or deleted from the "My Posts" page. Editing posts is handle
 
 ---- Loading posts -----
 Posts are loaded from a local JSON file called posts.json. Posts are loaded on three different pages: "Home", "Posts", and "My Posts".
+
+# How to start the app
+
+Normal Flow:
+
+`docker-compose up --build` to start the app.
+
+`Control + C` to stop the app.
+
+`docker-compose down` to clean up the environment (removes containers but preserves the DB data).
+
+Making changes to DB Flow:
+
+`Control + C` to stop the app.
+
+`docker-compose down -v` to remove the data in stored DB.
+
+`docker-compose up --build` to re-start the app.
+
+`docker-compose up --build` re-builds the Docker images and starts up the Docker containers (i.e. starts the app).
+
+`docker-compose down` cleans up the environment and frees up system resources.
+
+`docker-compose down -v` cleans up the environment, frees up system resources, and removes all stored data in the database(s).
