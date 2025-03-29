@@ -181,7 +181,7 @@ app.get('/my_posts', (req ,res) => {
 
 // API routes
 
- app.get('/api/myposts', async (req, res) => {
+app.get('/api/myposts', async (req, res) => {
     const { username } = req.query;
     if (!username) return res.status(400).json({ error: "Username is required" });
 
@@ -196,7 +196,7 @@ app.get('/my_posts', (req ,res) => {
         console.error(err);
         res.status(500).json({ error: "Internal server error" });
     };
- });
+});
 
 app.get('/api/posts', async (req, res) => {
     try {
