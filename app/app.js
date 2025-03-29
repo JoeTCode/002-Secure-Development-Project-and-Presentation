@@ -81,8 +81,7 @@ app.post('/', async function(req, res){
         const values = [username, password];
         const result = await pool.query(sql, values);
 
-        if (result.rows.length > 0) {
-
+        if (result.rows.length > 0) { // If details exist in db
             currentUser = username;
             // Set login details
             let login_attempt = {"username" : username, "password" : password};
@@ -95,13 +94,16 @@ app.post('/', async function(req, res){
                     console.log(err);
                 };
             });
-        } else {
+
+        } else { // If details do not exist in db
+
             // Redirect to back to login page
             res.sendFile(__dirname + '/public/html/login.html', (err) => {
                 if (err){
                     console.log(err);
                 };
             });
+            
         };
     } catch (err) {
         console.log(err);

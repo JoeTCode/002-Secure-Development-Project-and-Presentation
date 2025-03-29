@@ -5,6 +5,7 @@ async function checkLoginAttempts() {
 
     // Inform user they need to fill out the fields on the login form
     if(form_data.username === "null" || form_data.password === "null") {
+        console.log('hello');
         document.getElementById("login_error").parentNode.removeChild(document.getElementById("login_error"));
     }
     if(form_data.username === "" || form_data.password === "") {
