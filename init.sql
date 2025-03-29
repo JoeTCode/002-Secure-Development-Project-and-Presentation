@@ -16,12 +16,12 @@ CREATE TABLE posts (
 );
 
 
--- Insert initial users
+-- Insert initial users (passwords hashed with 10 salt rounds)
 INSERT INTO users (email, username, password) VALUES
-('admin@gmail.com', 'admin', 'admin'),
-('homersimpson123@gmail.com', 'homersimpson', 'pass'),
-('breakfast452@hotmail.com', 'breakfastman', 'pass'),
-('foodguy79@yahoo.com', 'foodguy79', 'pass');
+('admin@gmail.com', 'admin', '$2b$10$z.D59r2NBFgvwVZf0T1vee64XHWhUaDQ.AuTfOxeVY0LdKUMTGkna'), -- Unhashed password: admin
+('homersimpson123@gmail.com', 'homersimpson', '$2b$10$XcIouuzaUOj0lW1EjBiH8.W1GY95JjLa/LvwUk.KWJNtSYs1DYmQK'), -- Unhashed password: pass
+('breakfast452@hotmail.com', 'breakfastman', '$2b$10$P1N8LYNwSE3zobMTSeCQHeZ5fmLbDeEPZBPnBvCoasJ5bLN47rk5W'), -- Unhashed password: pass
+('foodguy79@yahoo.com', 'foodguy79', '$2b$10$amiXg6HNomFdTRfmlYFR/eKgrRdU5Pry6MIOPmWx1yb5NGvDLUeam'); -- Unhashed password: pass
 
 
 -- Insert initial posts

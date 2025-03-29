@@ -4,7 +4,9 @@ import bodyParser from 'body-parser';
 import fs from 'fs'
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import bcrypt from "bcryptjs";
 
+const saltRounds = 10;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
@@ -53,12 +55,15 @@ app.post('/register', async (req, res) => {
     }
     
     try {
-        const sql = 'INSERT INTO users(email, username, password) VALUES($1, $2, $3) RETURNING *';
-        const values = [email, username, password];
-        const result = await pool.query(sql, values)
-        
-        // Redirect to login page
-        res.render('login', { errorMessage: null });
+        bcrypt.hash(password, saltRounds).then(async (hashed_password) => {
+            // Store hashed password in DB.
+            const sql = 'INSERT INTO users(email, username, password) VALUES($1, $2, $3) RETURNING *';
+            const values = [email, username, hashed_password];
+            const result = await pool.query(sql, values)
+            
+            // Redirect to login page
+            res.render('login', { errorMessage: null });
+        });
 
     } catch (err) {
         console.log(err);
@@ -81,11 +86,13 @@ app.post('/', async function(req, res){
     var password = req.body.password_input;
 
     try {
-        const sql = 'SELECT * FROM users WHERE username=$1 AND password=$2';
-        const values = [username, password];
+        const sql = 'SELECT * FROM users WHERE username=$1';
+        const values = [username];
         const result = await pool.query(sql, values);
+        const hashed_password_from_db = result.rows[0].password;
+        const match = await bcrypt.compare(password, hashed_password_from_db);
 
-        if (result.rows.length > 0) { // Login success
+        if (result.rows.length > 0 && match) { // Login success
             currentUser = username;
             
             // Set login details
@@ -143,7 +150,7 @@ app.post('/makepost', async function(req, res) {
 
     // Redirect back to my_posts.html
     res.render('my_posts');
- });
+});
 
  // Delete a post POST request
  app.post('/deletepost', async (req, res) => {
@@ -157,7 +164,7 @@ app.post('/makepost', async function(req, res) {
     }
 
     res.render('my_posts');
- });
+});
 
 
 // GET routes

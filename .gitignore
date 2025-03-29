@@ -4,6 +4,9 @@ node_modules/
 # Ignore all .env variables
 .env
 
+# Ignore temp test file
+hash.js
+
 # Ignore DB volume data 
 postgres_data/
 
