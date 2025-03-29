@@ -16,7 +16,7 @@ Posts are loaded from a local JSON file called posts.json. Posts are loaded on t
 
 Normal Flow:
 
-1. `docker-compose up --build` to start the app.
+1. `docker-compose up --build` to start the app. After running once with the `--build` flag, you can subsequently omit this to speed up the load time.
 
 2. `Control + C` to stop the app.
 
