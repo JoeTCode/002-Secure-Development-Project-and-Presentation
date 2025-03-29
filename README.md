@@ -2,14 +2,24 @@ DSS Food Blog
 This is the front-end for your DSS Blog. It has a "Login" page, a "Home" page, a "Posts" page, and a "My Posts" page. It includes
 functional login, plus search, add, edit and delete of posts using local JSON files. You will update the functionality through the completion of your assignment.
 
-# ---- Logging in -----
-The username is "admin" and the password is "admin" in plaintext.
+# Security Features:
 
-# ---- Handling posts -----
+1. `Hashing` and `Salting` of the user's password.
+2. `JWT` (with protected routes) for authentication and session management.
+3. `HTTP-Only cookies` to prevent `cookies` (containing the `JWT`) from being accessed on the client-side.
+4. UUIDs for the `id` column in the `Users` table, preventing predictable IDs.
+
+# Logging in
+
+Admin login details:
+Username: admin
+password: admin
+
+---- Handling posts -----
 Posts can be searched using the search bar. See my_posts.js or posts.js for the function that handles this.
 Posts can be edited or deleted from the "My Posts" page. Editing posts is handled by deleting the original post and inserting the new post in its place. See app.js for the POST request which handles this.
 
-# ---- Loading posts -----
+ ---- Loading posts -----
 Posts are loaded from the PostgreSQL database. Posts are loaded on three different pages: "Home", "Posts", and "My Posts".
 
 # How to start the app
