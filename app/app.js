@@ -164,27 +164,26 @@ app.post('/', async function(req, res){
 app.post('/makepost', async function(req, res) {
     
     // Read in current posts
-    const json = fs.readFileSync(__dirname + '/public/json/posts.json');
-    var posts = JSON.parse(json);
+    // const json = fs.readFileSync(__dirname + '/public/json/posts.json');
+    // var posts = JSON.parse(json);
 
     // Get the current date
     let curDate = new Date();
     curDate = curDate.toLocaleString("en-GB");
 
     // Find post with the highest ID
-    let maxId = 0;
-    for (let i = 0; i < posts.length; i++) {
-        if (posts[i].postId > maxId) {
-            maxId = posts[i].postId;
-        }
-    }
+    // let maxId = 0;
+    // for (let i = 0; i < posts.length; i++) {
+    //     if (posts[i].postId > maxId) {
+    //         maxId = posts[i].postId;
+    //     }
+    // }
 
     // Initialise ID for a new post
     let newId = 0;
 
     // If postId is empty, user is making a new post
-    if(req.body.postId == "") {
-        newId = maxId + 1;
+    if (req.body.postId == "") {
         const sql = 'INSERT INTO posts(username, title, content, date_published) VALUES($1, $2, $3, NOW()) RETURNING *';
         const values = [currentUser, req.body.title_field, req.body.content_field];
         try {
@@ -193,7 +192,9 @@ app.post('/makepost', async function(req, res) {
         } catch (err) {
             console.log(err);
         }
-    } else { // If postID != empty, user is editing a post
+    } 
+    else { // If postID != empty, user is editing a post
+        
         newId = req.body.postId;
         
         try {
@@ -204,17 +205,17 @@ app.post('/makepost', async function(req, res) {
             console.log(err);
         };
 
-        // Find post with the matching ID, delete it from posts so user can submit their new version
-        let index = posts.findIndex(item => item.postId == newId);
-        posts.splice(index, 1);
+        // // Find post with the matching ID, delete it from posts so user can submit their new version
+        // let index = posts.findIndex(item => item.postId == newId);
+        // posts.splice(index, 1);
     }
     
 
     // Add post to posts.json
-    posts.push({"username": currentUser , "timestamp": curDate, "postId": newId, "title": req.body.title_field, "content": req.body.content_field});
+    // posts.push({"username": currentUser , "timestamp": curDate, "postId": newId, "title": req.body.title_field, "content": req.body.content_field});
 
 
-    fs.writeFileSync(__dirname + '/public/json/posts.json', JSON.stringify(posts));
+    // fs.writeFileSync(__dirname + '/public/json/posts.json', JSON.stringify(posts));
 
     // Redirect back to my_posts.html
     res.sendFile(__dirname + "/public/html/my_posts.html");
@@ -223,13 +224,13 @@ app.post('/makepost', async function(req, res) {
  // Delete a post POST request
  app.post('/deletepost', async (req, res) => {
 
-    // Read in current posts
-    const json = fs.readFileSync(__dirname + '/public/json/posts.json');
-    var posts = JSON.parse(json);
+    // // Read in current posts
+    // const json = fs.readFileSync(__dirname + '/public/json/posts.json');
+    // var posts = JSON.parse(json);
 
-    // Find post with matching ID and delete it
-    let index = posts.findIndex(item => item.postId == req.body.postId);
-    posts.splice(index, 1);
+    // // Find post with matching ID and delete it
+    // let index = posts.findIndex(item => item.postId == req.body.postId);
+    // posts.splice(index, 1);
 
     try {
         const sql = 'DELETE from posts WHERE post_id = $1';
@@ -240,7 +241,7 @@ app.post('/makepost', async function(req, res) {
     }
 
     // Update posts.json
-    fs.writeFileSync(__dirname + '/public/json/posts.json', JSON.stringify(posts));
+    // fs.writeFileSync(__dirname + '/public/json/posts.json', JSON.stringify(posts));
 
     res.sendFile(__dirname + "/public/html/my_posts.html");
  });
@@ -250,7 +251,7 @@ app.post('/makepost', async function(req, res) {
     if (!username) return res.status(400).json({ error: "Username is required" });
 
     try {
-        const sql = 'SELECT * FROM posts WHERE username = $1 ORDER BY date_published ASC';
+        const sql = 'SELECT * FROM posts WHERE username = $1 ORDER BY date_published DESC';
         const values = [username];
         
         const result = await pool.query(sql, values); 
@@ -264,7 +265,7 @@ app.post('/makepost', async function(req, res) {
 
 app.get('/api/posts', async (req, res) => {
     try {
-        const sql = 'SELECT * FROM posts ORDER BY date_published ASC';
+        const sql = 'SELECT * FROM posts ORDER BY date_published DESC';
         const result = await pool.query(sql);
         return res.json(result.rows);
 

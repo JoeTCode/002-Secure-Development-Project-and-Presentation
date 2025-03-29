@@ -13,12 +13,7 @@ async function loadPosts() {
     const post_data = await response.json();
     console.log(post_data);
 
-    // const post_response = await fetch("../json/posts.json");
-    // const post_data = await post_response.json();
-
-    
-
-    // Remove current posts
+    // Remove current posts from container element
     let postList = document.getElementById('myPosts');
 
     for(let i = 0; i < postList.children.length; i++) {
@@ -27,8 +22,8 @@ async function loadPosts() {
         }
     }
 
-    // Add posts made by current user
-    for(let i = 0; i < post_data.length; i++) {
+    // Add posts to container element made by current user in reverse order (as the first element appended will appear last)
+    for(let i = post_data.length - 1; i >= 0; i--) {
         
         let author = post_data[i].username;
 

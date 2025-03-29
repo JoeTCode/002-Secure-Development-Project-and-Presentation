@@ -4,6 +4,7 @@ async function loadLatestPosts() {
     // Load posts data
     const post_response = await fetch("/api/posts");
     const all_post_data = await post_response.json();
+    console.log(all_post_data);
     const post_data = all_post_data.slice(0, 2); // Selects the first 2 post rows
     console.log(post_data);
 

@@ -1,9 +1,7 @@
-// Function to load posts made by user who is currently logged in
+// Function to all load posts
 async function loadPosts() {
 
     // Load posts data
-    // const post_response = await fetch("../json/posts.json");
-    // const post_data = await post_response.json();
     const post_response = await fetch("/api/posts");
     const post_data = await post_response.json();
     console.log(post_data);
@@ -13,15 +11,15 @@ async function loadPosts() {
 
     let postList = document.getElementById('postsList');
 
-    // Remove current posts
+    // Remove current posts from container element
     for(let i = 0; i < postList.children.length; i++) {
         if(postList.children[i].nodeName == "article") {
             postList.removeChild(postList.children[i]);
         }
     }
 
-    // Add all recorded posts
-    for(let i = 0; i < post_data.length; i++) {
+    // Add all recorded posts to container element in reverse order (as the first element appended will appear last)
+    for(let i = post_data.length - 1; i >= 0; i--) {
         let author = post_data[i].username;
         let timestamp = post_data[i].date_published;
         let title = post_data[i].title;
