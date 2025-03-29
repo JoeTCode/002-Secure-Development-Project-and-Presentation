@@ -6,6 +6,10 @@
         <link rel="icon" type="image/x-icon" href="../imgs/foodie.ico">
         <link rel="stylesheet" href="../css/style.css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <script>
+            const user = <%- JSON.stringify(user) %>;
+            console.log(user);
+        </script>
         <script src="../js/my_posts.js" type="module" defer></script>
         <script src="../js/main.js" defer></script>
     </head>
@@ -14,9 +18,9 @@
             <a href="/index"><img id="logo" src="../imgs/logo.png"></a>
             <h1>Foodies 'R' Us</h1>
             <div class="dropdown">
-                <button id="login_link" href="#">Username <i class="fa fa-caret-down"></i></button>
+                <button id="login_link" href="#"> <%= user.username %> <i class="fa fa-caret-down"></i></button>
                 <div class="dropdown-content">
-                    <a id="logout_btn" href="/">Log out</a>
+                    <a id="logout_btn" href="/logout">Log out</a>
                 </div>
             </div>
         </header>

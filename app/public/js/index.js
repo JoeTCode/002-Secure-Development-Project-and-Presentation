@@ -8,9 +8,6 @@ async function loadLatestPosts() {
     const post_data = all_post_data.slice(0, 2); // Selects the first 2 post rows
     console.log(post_data);
 
-    const login_response = await fetch("../json/login_attempt.json");
-    const login_data = await login_response.json();
-
     // Remove current posts from page
     let postList = document.getElementById('postsList');
 

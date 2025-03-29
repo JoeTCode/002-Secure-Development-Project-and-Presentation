@@ -7,8 +7,11 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "body-parser": "^1.20.3",
+    "cookie-parser": "^1.4.7",
     "ejs": "^3.1.10",
-    "pg": "^8.14.1"
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.14.1",
+    "uuid": "^11.1.0"
   },
   "scripts": {
     "start": "node app.js",
@@ -17,7 +20,8 @@
   "nodemonConfig": {
     "ignore": [
       "public/json/login_attempt.json",
-      "public/json/*"
+      "public/json/*",
+      "test/*"
     ]
   }
 }

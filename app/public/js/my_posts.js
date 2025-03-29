@@ -3,10 +3,8 @@
 // Function to load posts made by user who is currently logged in
 async function loadPosts() {
     
-    // Load login data
-    const login_response = await fetch("../json/login_attempt.json");
-    const login_data = await login_response.json();
-    const username = login_data.username;
+    // Get username
+    const username = user.username;
 
     // Load posts data
     const response = await fetch(`/api/myposts?username=${encodeURIComponent(username)}`);
@@ -28,7 +26,7 @@ async function loadPosts() {
         let author = post_data[i].username;
 
         // Check usernames match on each post
-        if(author === login_data.username) {
+        if(author === username) {
             let timestamp = post_data[i].date_published;
             let title = post_data[i].title;
             let content = post_data[i].content;

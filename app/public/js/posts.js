@@ -6,9 +6,6 @@ async function loadPosts() {
     const post_data = await post_response.json();
     console.log(post_data);
 
-    const login_response = await fetch("../json/login_attempt.json");
-    const login_data = await login_response.json();
-
     let postList = document.getElementById('postsList');
 
     // Remove current posts from container element
