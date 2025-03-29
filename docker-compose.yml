@@ -27,6 +27,9 @@ services:
       - DB_PASSWORD=$POSTGRESDB_ROOT_PASSWORD
       - DB_NAME=$POSTGRESDB_DATABASE
       - DB_PORT=$DB_PORT
+    volumes:
+      - ./app:/app  # Mount project folder to allow live updates
+      - /app/node_modules  # Ignore node_modules to avoid conflicts
     stdin_open: true
     tty: true
 

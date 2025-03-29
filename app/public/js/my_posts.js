@@ -1,13 +1,22 @@
+
+
 // Function to load posts made by user who is currently logged in
 async function loadPosts() {
-
-    // Load posts data
-    const post_response = await fetch("../json/posts.json");
-    const post_data = await post_response.json();
-
+    
     // Load login data
     const login_response = await fetch("../json/login_attempt.json");
     const login_data = await login_response.json();
+    const username = login_data.username;
+
+    // Load posts data
+    const response = await fetch(`/api/myposts?username=${encodeURIComponent(username)}`);
+    const post_data = await response.json();
+    console.log(post_data);
+
+    // const post_response = await fetch("../json/posts.json");
+    // const post_data = await post_response.json();
+
+    
 
     // Remove current posts
     let postList = document.getElementById('myPosts');
@@ -25,10 +34,10 @@ async function loadPosts() {
 
         // Check usernames match on each post
         if(author === login_data.username) {
-            let timestamp = post_data[i].timestamp;
+            let timestamp = post_data[i].date_published;
             let title = post_data[i].title;
             let content = post_data[i].content;
-            let postId = post_data[i].postId;
+            let postId = post_data[i].post_id;
 
             let postContainer = document.createElement('article');
             postContainer.classList.add("post");
@@ -38,7 +47,7 @@ async function loadPosts() {
             let postIdContainer = document.createElement("h6");
             postIdContainer.textContent = postId;
             postIdContainer.hidden = true;
-            postId.id = "postId";
+            postIdContainer.id = "postId";
             postContainer.appendChild(postIdContainer);
 
             let img = document.createElement('img');

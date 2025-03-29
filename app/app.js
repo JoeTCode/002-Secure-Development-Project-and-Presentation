@@ -1,5 +1,4 @@
 import express from 'express'
-import pg from 'pg';
 import { pool } from './db.js';
 import bodyParser from 'body-parser';
 import fs from 'fs'
@@ -81,8 +80,15 @@ app.post('/', async function(req, res){
         const sql = 'SELECT * FROM users WHERE username=$1 AND password=$2';
         const values = [username, password];
         const result = await pool.query(sql, values);
-        console.log(result);
+
         if (result.rows.length > 0) {
+
+            currentUser = username;
+            // Set login details
+            let login_attempt = {"username" : username, "password" : password};
+            let data = JSON.stringify(login_attempt);
+            fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
+            
             // Redirect to home page
             res.sendFile(__dirname + '/public/html/index.html', (err) => {
                 if (err){
@@ -100,6 +106,7 @@ app.post('/', async function(req, res){
     } catch (err) {
         console.log(err);
     };
+
     /*
     // Currently only "username" is a valid username
     if(username !== "username") {
@@ -154,8 +161,8 @@ app.post('/', async function(req, res){
 });
 
 // Make a post POST request
-app.post('/makepost', function(req, res) {
-
+app.post('/makepost', async function(req, res) {
+    
     // Read in current posts
     const json = fs.readFileSync(__dirname + '/public/json/posts.json');
     var posts = JSON.parse(json);
@@ -178,16 +185,34 @@ app.post('/makepost', function(req, res) {
     // If postId is empty, user is making a new post
     if(req.body.postId == "") {
         newId = maxId + 1;
+        const sql = 'INSERT INTO posts(username, title, content, date_published) VALUES($1, $2, $3, NOW()) RETURNING *';
+        const values = [currentUser, req.body.title_field, req.body.content_field];
+        try {
+            const result = await pool.query(sql, values);
+            console.log(result);
+        } catch (err) {
+            console.log(err);
+        }
     } else { // If postID != empty, user is editing a post
         newId = req.body.postId;
+        
+        try {
+            const sql = 'UPDATE posts SET title = $1, content = $2 WHERE post_id = $3';
+            const values = [req.body.title_field, req.body.content_field, newId];
+            const result = await pool.query(sql, values);
+        } catch (err) {
+            console.log(err);
+        };
 
         // Find post with the matching ID, delete it from posts so user can submit their new version
         let index = posts.findIndex(item => item.postId == newId);
         posts.splice(index, 1);
     }
+    
 
     // Add post to posts.json
     posts.push({"username": currentUser , "timestamp": curDate, "postId": newId, "title": req.body.title_field, "content": req.body.content_field});
+
 
     fs.writeFileSync(__dirname + '/public/json/posts.json', JSON.stringify(posts));
 
@@ -196,7 +221,7 @@ app.post('/makepost', function(req, res) {
  });
 
  // Delete a post POST request
- app.post('/deletepost', (req, res) => {
+ app.post('/deletepost', async (req, res) => {
 
     // Read in current posts
     const json = fs.readFileSync(__dirname + '/public/json/posts.json');
@@ -206,11 +231,48 @@ app.post('/makepost', function(req, res) {
     let index = posts.findIndex(item => item.postId == req.body.postId);
     posts.splice(index, 1);
 
+    try {
+        const sql = 'DELETE from posts WHERE post_id = $1';
+        const values = [req.body.postId];
+        const result = await pool.query(sql, values);
+    } catch (err) {
+        console.log(err);
+    }
+
     // Update posts.json
     fs.writeFileSync(__dirname + '/public/json/posts.json', JSON.stringify(posts));
 
     res.sendFile(__dirname + "/public/html/my_posts.html");
  });
+
+ app.get('/api/myposts', async (req, res) => {
+    const { username } = req.query;
+    if (!username) return res.status(400).json({ error: "Username is required" });
+
+    try {
+        const sql = 'SELECT * FROM posts WHERE username = $1 ORDER BY date_published ASC';
+        const values = [username];
+        
+        const result = await pool.query(sql, values); 
+        return res.json(result.rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Internal server error" });
+    };
+ });
+
+app.get('/api/posts', async (req, res) => {
+    try {
+        const sql = 'SELECT * FROM posts ORDER BY date_published ASC';
+        const result = await pool.query(sql);
+        return res.json(result.rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({error: "Internal server error"});
+    };
+});
 
 app.listen(port, () => {
     console.log(`My app listening on port ${port}!`)
