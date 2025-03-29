@@ -12,8 +12,8 @@ functional login, plus search, add, edit and delete of posts using local JSON fi
 # Logging in
 
 Admin login details:
-Username: admin
-password: admin
+- Username: admin
+- password: admin
 
 ---- Handling posts -----
 Posts can be searched using the search bar. See my_posts.js or posts.js for the function that handles this.
