@@ -15,6 +15,10 @@
         </header>
         <main>
         <p>Please enter your username and password to continue.</p>
+        
+        <% if (errorMessage) { %>
+            <p style="color: red;"><%= errorMessage %></p>
+        <% } %>
 
         <form method="post" action="/" id="login_form">
             <label for="username_input">Username:</label>
@@ -25,7 +29,7 @@
 
             <button id="login_btn" type="submit">Log in</button>
         </form>
-        <a href="../html/register.html">Register</a>
+        <a href="/register">Register</a>
         </main>
     </body>
 </html>

@@ -13,6 +13,10 @@
         </header>
         <main>
         <p>Please provide your details to continue.</p>
+        
+        <% if (errorMessage) { %>
+            <p style="color: red;"><%= errorMessage %></p>
+        <% } %>
 
         <form method="post" action="/register" id="register_form">
             <label for="email_input">Email:</label>
@@ -26,6 +30,7 @@
 
             <button id="register_btn" type="submit">Register</button>
         </form>
+        <a href="/">Login</a>
         </main>
     </body>
 </html>

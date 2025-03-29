@@ -10,6 +10,13 @@ const __dirname = dirname(__filename);
 const app = express();
 const port = 3000;
 
+// Setting EJS as the view engine
+app.set('view engine', 'ejs');
+
+// Setting the views directory (./views)
+app.set('views', (__dirname + '/views'));
+
+// Connect to Postgres db
 pool.connect()
   .then(() => console.log('Successfully connected to PostgreSQL database.'))
   .catch(err => console.error('Database connection error:', err));
@@ -18,14 +25,10 @@ app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-// Landing page
+// Login page
 app.get('/', (req, res) => {
     /// send the static file
-    res.sendFile(__dirname + '/public/html/login.html', (err) => {
-        if (err){
-            console.log(err);
-        }
-    })
+    res.render('login', { errorMessage: null });
 });
 
 // Reset login_attempt.json when server restarts
@@ -36,36 +39,37 @@ fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
 // Store who is currently logged in
 let currentUser = null;
 
+
+// POST routes
+
 // Register POST request
 app.post('/register', async (req, res) => {
     const email = req.body.email_input;
     const username = req.body.username_input;
     const password = req.body.password_input;
+    
     if (!email|| !username || !password) {
-        return res.sendFile(__dirname + '/public/html/register.html', (err) => {
-            if (err){
-                console.log(err);
-            };
-        });
+        return res.render('register', { errorMessage: 'Invalid details.' })
     }
-    const sql = 'INSERT INTO users(email, username, password) VALUES($1, $2, $3) RETURNING *';
-    const values = [email, username, password];
+    
     try {
+        const sql = 'INSERT INTO users(email, username, password) VALUES($1, $2, $3) RETURNING *';
+        const values = [email, username, password];
         const result = await pool.query(sql, values)
+        
         // Redirect to login page
-        res.sendFile(__dirname + '/public/html/login.html', (err) => {
-            if (err){
-                console.log(err);
-            };
-        });
+        res.render('login', { errorMessage: null });
+
     } catch (err) {
         console.log(err);
+
+        if (err.code == 23505) {
+            return res.render('register', { errorMessage: 'Please choose a unique email or username.' })
+        } 
         // Redirect back to register page
-        res.sendFile(__dirname + '/public/html/register.html', (err) => {
-            if (err) {
-                console.log(err);
-            };
-        });
+        else {
+            res.render('register', { errorMessage: 'An error occurred during registration. Please try again.'})
+        };
     };
 })
 
@@ -81,105 +85,34 @@ app.post('/', async function(req, res){
         const values = [username, password];
         const result = await pool.query(sql, values);
 
-        if (result.rows.length > 0) { // If details exist in db
+        if (result.rows.length > 0) { // Login success
             currentUser = username;
+            
             // Set login details
             let login_attempt = {"username" : username, "password" : password};
             let data = JSON.stringify(login_attempt);
             fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
             
             // Redirect to home page
-            res.sendFile(__dirname + '/public/html/index.html', (err) => {
-                if (err){
-                    console.log(err);
-                };
-            });
+            res.render('index');
 
-        } else { // If details do not exist in db
+        } else { // Login failure
 
             // Redirect to back to login page
-            res.sendFile(__dirname + '/public/html/login.html', (err) => {
-                if (err){
-                    console.log(err);
-                };
-            });
-            
+            res.render('login', { errorMessage: 'Invalid username or password' });
         };
+
     } catch (err) {
         console.log(err);
     };
-
-    /*
-    // Currently only "username" is a valid username
-    if(username !== "username") {
-
-        // Update login_attempt with credentials used to log in
-        let login_attempt = {"username" : username, "password" : password};
-        let data = JSON.stringify(login_attempt);
-        fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
-
-        // Redirect back to login page
-        res.sendFile(__dirname + '/public/html/login.html', (err) => {
-            if (err){
-                console.log(err);
-            }
-        });
-    }
-
-    // Currently only "password" is a valid password
-    if(password !== "password") {
-
-        // Update login_attempt with credentials used to log in
-        let login_attempt = {"username" : username, "password" : password};
-        let data = JSON.stringify(login_attempt);
-        fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
-
-        // Redirect back to login page
-        res.sendFile(__dirname + '/public/html/login.html', (err) => {
-            if (err){
-                console.log(err);
-            }
-        });
-    }
-
-    // Valid username and password both entered together
-    if(username === "username" && password === "password") {
-        // Update login_attempt with credentials
-        let login_attempt = {"username" : username, "password" : password};
-        let data = JSON.stringify(login_attempt);
-        fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
-
-        // Update current user upon successful login
-        currentUser = req.body.username_input;
-
-        // Redirect to home page
-        res.sendFile(__dirname + '/public/html/index.html', (err) => {
-            if (err){
-                console.log(err);
-            }
-        })
-    }
-    */
 });
 
 // Make a post POST request
 app.post('/makepost', async function(req, res) {
-    
-    // Read in current posts
-    // const json = fs.readFileSync(__dirname + '/public/json/posts.json');
-    // var posts = JSON.parse(json);
 
     // Get the current date
     let curDate = new Date();
     curDate = curDate.toLocaleString("en-GB");
-
-    // Find post with the highest ID
-    // let maxId = 0;
-    // for (let i = 0; i < posts.length; i++) {
-    //     if (posts[i].postId > maxId) {
-    //         maxId = posts[i].postId;
-    //     }
-    // }
 
     // Initialise ID for a new post
     let newId = 0;
@@ -206,33 +139,14 @@ app.post('/makepost', async function(req, res) {
         } catch (err) {
             console.log(err);
         };
-
-        // // Find post with the matching ID, delete it from posts so user can submit their new version
-        // let index = posts.findIndex(item => item.postId == newId);
-        // posts.splice(index, 1);
     }
-    
-
-    // Add post to posts.json
-    // posts.push({"username": currentUser , "timestamp": curDate, "postId": newId, "title": req.body.title_field, "content": req.body.content_field});
-
-
-    // fs.writeFileSync(__dirname + '/public/json/posts.json', JSON.stringify(posts));
 
     // Redirect back to my_posts.html
-    res.sendFile(__dirname + "/public/html/my_posts.html");
+    res.render('my_posts');
  });
 
  // Delete a post POST request
  app.post('/deletepost', async (req, res) => {
-
-    // // Read in current posts
-    // const json = fs.readFileSync(__dirname + '/public/json/posts.json');
-    // var posts = JSON.parse(json);
-
-    // // Find post with matching ID and delete it
-    // let index = posts.findIndex(item => item.postId == req.body.postId);
-    // posts.splice(index, 1);
 
     try {
         const sql = 'DELETE from posts WHERE post_id = $1';
@@ -242,11 +156,30 @@ app.post('/makepost', async function(req, res) {
         console.log(err);
     }
 
-    // Update posts.json
-    // fs.writeFileSync(__dirname + '/public/json/posts.json', JSON.stringify(posts));
-
-    res.sendFile(__dirname + "/public/html/my_posts.html");
+    res.render('my_posts');
  });
+
+
+// GET routes
+
+app.get('/register', (req, res) => {
+    res.render('register', { errorMessage: null });
+});
+
+app.get('/index', (req ,res) => {
+    res.render('index');
+})
+
+app.get('/posts', (req ,res) => {
+    res.render('posts');
+})
+
+app.get('/my_posts', (req ,res) => {
+    res.render('my_posts');
+})
+
+
+// API routes
 
  app.get('/api/myposts', async (req, res) => {
     const { username } = req.query;
