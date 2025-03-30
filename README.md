@@ -20,11 +20,10 @@ Posts are loaded from the PostgreSQL database. Posts are loaded on three differe
 5. Encryption of email using bcrypt, with unique salts for each email.
 
 
-# Logging in
+# Pre-requisites
 
-Admin login details:
-- Username: admin
-- password: admin
+- Built using Node 20.x.x, please have a similar version.
+- Docker desktop is needed to run this app, please download the latest version for your machine [here.](https://www.docker.com/products/docker-desktop/)
 
 
 # How to start the app
@@ -50,3 +49,10 @@ Making changes to DB Flow:
 `docker-compose down` cleans up the environment and frees up system resources.
 
 `docker-compose down -v` cleans up the environment, frees up system resources, and removes all stored data in the database(s).
+
+
+# Logging in
+
+Admin login details:
+- Username: admin
+- password: admin
