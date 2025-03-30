@@ -17,7 +17,7 @@ Posts are loaded from the PostgreSQL database. Posts are loaded on three differe
 2. `JWT` (with protected routes) for authentication and session management.
 3. `HTTP-Only cookies` to prevent `cookies` (containing the `JWT`) from being accessed on the client-side.
 4. UUIDs for the `id` column in the `Users` table, preventing predictable IDs.
-5. Encryption of email using bcrypt, with unique salts for each email.
+5. Encryption functions using bcrypt, with unique salts. No data is being encrypted yet.
 6. Using `element.textContent` instead of `element.innerHTML` when populating the post elements to prevent possible scripts from being executed (XSS prevention).
 
 
