@@ -53,32 +53,25 @@ app.post('/register', async (req, res) => {
         return res.render('register', { errorMessage: 'Invalid details.' })
     }
     
-    // Password Hashing and Salting
     try {
-        bcrypt.hash(password, saltRounds).then(async (hashed_password) => {
-            
-            // Email encryption
-            try {
-                const uuid = uuidv4()
-                const encryptedEmail = await encrypt(email, process.env.KEY_PASSWORD);
-                const sql = 'INSERT INTO users(id, email, username, password) VALUES($1, $2, $3, $4) RETURNING *';
-                const values = [uuid, encryptedEmail, username, hashed_password];
-                const result = await pool.query(sql, values);
-                
-            } catch (err) {
-                console.error('Error encrypting data or inserting data to database:', err);
-            }           
-        });
+        // Password Hashing and Salting
+        const hashed_password = bcrypt.hash(password, saltRounds) 
+        // Generating UUID for ID column of Users db
+        const uuid = uuidv4()
+        // Email encryption
+        // const encryptedEmail = await encrypt(email, process.env.KEY_PASSWORD);
+
+        const sql = 'INSERT INTO users(id, email, username, password) VALUES($1, $2, $3, $4) RETURNING *';
+        const values = [uuid, email, username, hashed_password];
+        const result = await pool.query(sql, values);                  
 
     } catch (err) {
-        console.log('An error occurred upon attempting to hash:', err);
-
         if (err.code == 23505) {
             return res.render('register', { errorMessage: 'Please choose a unique email or username.' })
         } 
         // Redirect back to register page
         else {
-            res.render('register', { errorMessage: 'An error occurred during registration. Please try again.'})
+            return res.render('register', { errorMessage: 'An error occurred during registration. Please try again.'})
         };
     };
 })
@@ -100,8 +93,8 @@ app.post('/', async (req, res) => {
         if (result.rows.length > 0 && match) { // Login success
 
             const { id, email, username } = result.rows[0]
-            const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
-            const token = jwt.sign({"id": id, "email": decryptedEmail, "username": username}, process.env.MY_SECRET, { expiresIn: "1h" });
+            // const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
+            const token = jwt.sign({"id": id, "email": email, "username": username}, process.env.MY_SECRET, { expiresIn: "1h" });
             
             res.cookie("token", token, {
                 httpOnly: true,

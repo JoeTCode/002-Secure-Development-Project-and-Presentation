@@ -15,14 +15,21 @@ import { promisify } from 'util';
 const scryptAsync = promisify(scrypt);
 const randomFillAsync = promisify(randomFill);
 
+
 // const algorithm = 'aes-192-cbc';
-//const password = 'Password used to generate key';
+// const password = 'Password used to generate key';
 
 
-export async function encrypt(text, keyPassword, algorithm='aes-192-cbc') {
+export async function encrypt(text, keyPassword, salt=false, algorithm='aes-192-cbc') {
     try {
-        // Generate a random salt
-        const salt = await randomFillAsync(new Uint8Array(16));
+        // If salt if false, generate a random salt
+        if (!salt) {
+            salt = await randomFillAsync(new Uint8Array(16));
+        } 
+        // If salt is set to true, use preset salt. 
+        else {
+            salt = Buffer.from('f652cf8cdc1795cc9c60fb81ff094a6b', 'hex');
+        }
 
         // Generate a key. The key length is dependent on the algorithm.
         // In this case for the aes192 algorithm, it is 24 bytes (192 bits).
@@ -70,5 +77,5 @@ export async function decrypt(encryptedData, keyPassword, algorithm='aes-192-cbc
 
     } catch (err) {
         console.error('Error decrypting data:', err);
-    }  
-}
+    };
+};
