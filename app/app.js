@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import { cookieJwtAuth } from './middleware/cookieJwtAuth.js';
+import { encrypt, decrypt } from './encryption/encryptDecrypt.js';
 
 const saltRounds = 10;
 const __filename = fileURLToPath(import.meta.url);
@@ -32,16 +33,12 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 
+
 // Login page
 app.get('/', (req, res) => {
     /// send the static file
     res.render('login', { errorMessage: null });
 });
-
-// Reset login_attempt.json when server restarts
-// let login_attempt = {"username" : "null", "password" : "null"};
-// let data = JSON.stringify(login_attempt);
-// fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
 
 
 // POST routes
@@ -56,19 +53,25 @@ app.post('/register', async (req, res) => {
         return res.render('register', { errorMessage: 'Invalid details.' })
     }
     
+    // Password Hashing and Salting
     try {
         bcrypt.hash(password, saltRounds).then(async (hashed_password) => {
-            const uuid = uuidv4()
-            const sql = 'INSERT INTO users(id, email, username, password) VALUES($1, $2, $3, $4) RETURNING *';
-            const values = [uuid, email, username, hashed_password];
-            const result = await pool.query(sql, values)
             
-            // Redirect to login page
-            res.render('login', { errorMessage: null });
+            // Email encryption
+            try {
+                const uuid = uuidv4()
+                const encryptedEmail = await encrypt(email, process.env.KEY_PASSWORD);
+                const sql = 'INSERT INTO users(id, email, username, password) VALUES($1, $2, $3, $4) RETURNING *';
+                const values = [uuid, encryptedEmail, username, hashed_password];
+                const result = await pool.query(sql, values);
+                
+            } catch (err) {
+                console.error('Error encrypting data or inserting data to database:', err);
+            }           
         });
 
     } catch (err) {
-        console.log(err);
+        console.log('An error occurred upon attempting to hash:', err);
 
         if (err.code == 23505) {
             return res.render('register', { errorMessage: 'Please choose a unique email or username.' })
@@ -97,12 +100,8 @@ app.post('/', async (req, res) => {
         if (result.rows.length > 0 && match) { // Login success
 
             const { id, email, username } = result.rows[0]
-            const token = jwt.sign({"id": id, "email": email, "username": username}, process.env.MY_SECRET, { expiresIn: "1h" });
-
-            // Set login details
-            // let login_attempt = {"username" : username, "password" : input_password};
-            // let data = JSON.stringify(login_attempt);
-            // fs.writeFileSync(__dirname + '/public/json/login_attempt.json', data);
+            const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
+            const token = jwt.sign({"id": id, "email": decryptedEmail, "username": username}, process.env.MY_SECRET, { expiresIn: "1h" });
             
             res.cookie("token", token, {
                 httpOnly: true,
