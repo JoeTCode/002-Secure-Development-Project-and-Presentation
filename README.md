@@ -26,11 +26,11 @@ Posts are loaded from the PostgreSQL database. Posts are loaded on three differe
 
 - Built using Node 20.x.x, please have a similar version.
 - **Docker desktop** is needed to run this app, please download the latest version for your machine [here.](https://www.docker.com/products/docker-desktop/)
-- Please **download** the `.env file` from our shared [Trello board](https://trello.com/b/iofxikyy/dss2024-25-002-ug29) in the **relevant documents list**, otherwise the app wont run.
+- Please **download** the `.env` file from our shared [Trello board](https://trello.com/b/iofxikyy/dss2024-25-002-ug29) in the **relevant documents list**, otherwise the app wont run.
 
 # How to start the app
 
-Normal Flow:
+**Normal Flow:**
 
 1. `docker compose up --build` to start the app. After running docker for the first time with the `--build` flag, you can subsequently omit this to speed up the load time.
 
@@ -38,7 +38,7 @@ Normal Flow:
 
 3. `docker compose down` to clean up the environment (removes containers but preserves the DB data).
 
-Making changes to DB Flow:
+**Making changes to DB Flow:**
 
 1. `Control + C` to stop the app.
 
@@ -52,9 +52,9 @@ Making changes to DB Flow:
 
 `docker compose down -v` cleans up the environment, frees up system resources, and removes all stored data in the database(s).
 
-Additional note:
+**Additional note(s):**
 
-After altering the .env file, you need to rerun the docker container using:
+After altering the `.env` file you need to rerun the docker container to implement the changes, using:
 - `Control + C` to stop the app (if the app is running)
 - `docker compose down`
 - `docker compose up`
