@@ -1,7 +1,7 @@
 # DSS Food Blog
 
 This is the front-end for your DSS Blog. It has a "Login" page, a "Home" page, a "Posts" page, and a "My Posts" page. It includes
-functional login, plus search, add, edit and delete of posts using local JSON files. You will update the functionality through the completion of your assignment.
+functional login, plus search, add, edit and delete of posts by interacting with a PostgreSQL docker container. You will update the functionality through the completion of your assignment.
 
 ---- Handling posts -----
 Posts can be searched using the search bar. See my_posts.js or posts.js for the function that handles this.
