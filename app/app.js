@@ -171,7 +171,7 @@ app.post('/', async (req, res) => {
         // If attempts below limit, but unsuccessful login, increment the number of attempts
         if (attempts < loginLimit && !match) { // This handles null values too, as null = 0
             if (!firstLoginAttempt) { // Ensures the user has recorded previous login attempts
-                if (isRecentAttempt(last_attempt, process.env.HOW_RECENT)) {
+                if (isRecentAttempt(last_attempt, process.env.FAILED_LOGIN_RESET_WINDOW_HRS)) {
                     attempts += 1
                     const incrementSql = 'UPDATE login_attempts SET attempts = $1, last_attempt = NOW() WHERE ip = $2';
                     const incrementValues = [attempts, clientIp];

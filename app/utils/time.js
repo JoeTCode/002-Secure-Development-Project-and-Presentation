@@ -4,7 +4,7 @@
  * @param {Number} howRecent - The time from now in hours that decides whether a login attempt is 'recent' (1, 0,5, 0.1, etc.).
  * @returns Boolean
  */
-export function isRecentAttempt(attempt, howRecent=process.env.HOW_RECENT) {
+export function isRecentAttempt(attempt, howRecent=process.env.FAILED_LOGIN_RESET_WINDOW_HRS) {
     const attemptDate = new Date(attempt);
     const now = new Date();
     
