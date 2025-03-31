@@ -9,7 +9,10 @@ import { v4 as uuidv4 } from 'uuid';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import { cookieJwtAuth } from './middleware/cookieJwtAuth.js';
-import { encrypt, decrypt } from './encryption/encryptDecrypt.js';
+import { encrypt, decrypt } from './utils/encryptDecrypt.js';
+import requestIp from 'request-ip';
+import { isRecentAttempt } from './utils/time.js';
+import { checkReCaptcha } from './utils/reCaptcha.js';
 
 const saltRounds = 10;
 const __filename = fileURLToPath(import.meta.url);
@@ -31,13 +34,39 @@ pool.connect()
 app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-app.use(cookieParser());
 
+// Prevents cookie from being tampered with
+app.use(cookieParser(process.env.SECRET_KEY)); 
+
+const loginLimit = process.env.LOGIN_ATTEMPT_LIMIT - 1
 
 // Login page
-app.get('/', (req, res) => {
-    /// send the static file
-    res.render('login', { errorMessage: null });
+app.get('/', async (req, res) => {
+    
+    // Get IP address of user
+    const clientIp = requestIp.getClientIp(req);
+
+    const checkSql = 'SELECT * FROM login_attempts WHERE ip = $1';
+    const checkValue = [clientIp];
+    const checkResult = await pool.query(checkSql, checkValue);
+
+    let attempts = null;
+
+    if (checkResult.rows[0]) {
+        attempts = checkResult.rows[0].attempts;
+    };
+
+    if (attempts < loginLimit) {
+        /// send the static file
+        return res.render('login', { errorMessage: null, loginLimit: false });
+    } ;
+    if (attempts >= loginLimit) {
+        return res.render('login', { errorMessage: null, loginLimit: true });
+    };
+    if (!attempts) {
+        return res.render('login', { errorMessage: null, loginLimit: false });
+    };
+    
 });
 
 
@@ -83,37 +112,126 @@ app.post('/', async (req, res) => {
     var input_username = req.body.username_input;
     var input_password = req.body.password_input;
 
+    // Get IP address of user
+    const clientIp = requestIp.getClientIp(req);
+
+    // Get ReCAPTCHA response token (if it exists)
+    const responseToken = req.body['g-recaptcha-response'];
+    let passedReCaptcha = true;
+
+    let firstLoginAttempt = true;
+
     try {
+        
         const sql = 'SELECT * FROM users WHERE username=$1';
         const values = [input_username];
         const result = await pool.query(sql, values);
-        const hashed_password_from_db = result.rows[0].password;
-        const match = await bcrypt.compare(input_password, hashed_password_from_db);
-        
-        if (result.rows.length > 0 && match) { // Login success
 
-            const { id, email, username } = result.rows[0]
-            // const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
-            const token = jwt.sign({"id": id, "email": email, "username": username}, process.env.MY_SECRET, { expiresIn: "1h" });
-            
-            res.cookie("token", token, {
-                httpOnly: true,
-                // secure: true,
-                // maxAge: 1000000,
-                // signed: true,
-            });
+        let match = false
 
-            // Redirect to home page
-            res.redirect('index');
+        if (result.rows[0]) {
+            const hashed_password_from_db = result.rows[0].password;
+            match = await bcrypt.compare(input_password, hashed_password_from_db);
+        }
 
-        } else { // Login failure
+        const checkSql = 'SELECT * FROM login_attempts WHERE ip = $1';
+        const checkValue = [clientIp];
+        const checkResult = await pool.query(checkSql, checkValue);
 
-            // Redirect to back to login page
-            res.render('login', { errorMessage: 'Invalid username or password' });
+        let attempts = 0;
+        let last_attempt = null;
+
+        if (checkResult.rows[0]) {
+            attempts = checkResult.rows[0].attempts;
+            last_attempt = checkResult.rows[0].last_attempt;
+            firstLoginAttempt = false;
+        }
+
+        if (attempts >= loginLimit && !responseToken && !match) {
+            console.log('0')
+            return res.render('login', { errorMessage: null, loginLimit: true });
         };
 
+        if (responseToken && attempts >= loginLimit) {
+            passedReCaptcha = await checkReCaptcha(responseToken);
+        };
+
+        if (!passedReCaptcha && attempts >= loginLimit) {
+            console.log('1');
+            return res.render('login', {errorMessage: null, loginLimit: true});
+        };
+        
+        // NEED TO RESET LIMIT IF REPCAPTCHA COMPLETED, ELSE NOT
+        // If attempt limit reached and unsuccessful login, render reCAPTCHA
+        if (attempts >= loginLimit && !match) {
+            console.log('2');
+            return res.render('login', { errorMessage: null, loginLimit: true });
+        };
+
+        // If attempts below limit, but unsuccessful login, increment the number of attempts
+        if (attempts < loginLimit && !match) { // This handles null values too, as null = 0
+            if (!firstLoginAttempt) { // Ensures the user has recorded previous login attempts
+                if (isRecentAttempt(last_attempt, process.env.HOW_RECENT)) {
+                    attempts += 1
+                    const incrementSql = 'UPDATE login_attempts SET attempts = $1, last_attempt = NOW() WHERE ip = $2';
+                    const incrementValues = [attempts, clientIp];
+                    await pool.query(incrementSql, incrementValues);
+                    console.log('3');
+                    return res.render('login', {errorMessage: 'Invalid username or password', loginLimit: false});
+
+                } else {
+                    const incrementSql = 'UPDATE login_attempts SET attempts = 0, last_attempt = NOW() WHERE ip = $1';
+                    const incrementValues = [clientIp];
+                    await pool.query(incrementSql, incrementValues);
+                    console.log('4');
+                    return res.render('login', {errorMessage: 'Invalid username or password', loginLimit: false});
+                }
+
+            } else { // User has no recorded login attempts, there we will create a new record
+                attempts = 1
+                const incrementSql = 'INSERT INTO login_attempts(ip, attempts, last_attempt) VALUES($1, $2, NOW())';
+                const incrementValues = [clientIp, attempts];
+                await pool.query(incrementSql, incrementValues);
+                console.log('5');
+                return res.render('login', {errorMessage: 'Invalid username or password', loginLimit: false});
+            }
+            
+        }
+
+        // else if attempt == 3 or attempt < 3 AND match, then continue to login and reset limit
+        
+        if (match) { // Login success, reset any existing login attempts
+            
+            // If attempts is not null (the user has had previous login attempts)
+            if (!firstLoginAttempt) {
+                const resetSql = 'UPDATE login_attempts SET attempts = 0, last_attempt = NOW() WHERE ip = $1';
+                const resetValue = [clientIp];
+                await pool.query(resetSql, resetValue);
+
+            } else {
+                const incrementSql = 'INSERT INTO login_attempts(ip, attempts, last_attempt) VALUES($1, 0, NOW())';
+                const incrementValue = [clientIp];
+                await pool.query(incrementSql, incrementValue);
+            }
+    
+            const { id, email, username } = result.rows[0]
+            // const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
+            const token = jwt.sign({"id": id, "email": email, "username": username}, process.env.MY_SECRET, { expiresIn: "30m" });
+            
+            res.cookie("token", token, {
+                httpOnly: process.env.HTTP_ONLY,
+                sameSite: process.env.SAMESITE,
+                // secure: true, (ensures cookie is only sent over https)
+                // maxAge: 1000000, (sets cookie timeout)
+                // signed: true,
+            });
+            console.log('6');
+            // Redirect to home page
+            return res.redirect('index');
+        }
+
     } catch (err) {
-        console.log(err);
+        console.error(err);
     };
 });
 
@@ -196,6 +314,7 @@ app.get('/my_posts', cookieJwtAuth, (req ,res) => {
 
 
 // API routes
+
 
 app.get('/api/myposts', cookieJwtAuth, async (req, res) => {
     const { username } = req.query;

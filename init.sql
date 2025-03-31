@@ -16,6 +16,13 @@ CREATE TABLE posts (
 );
 
 
+CREATE TABLE login_attempts (
+    ip VARCHAR(100) PRIMARY KEY,
+    attempts INT,
+    last_attempt TIMESTAMP
+);
+
+
 -- Insert initial users (passwords hashed with 10 salt rounds)
 INSERT INTO users (id, email, username, password) VALUES
 ('7d408f03-39f5-4cca-8dc8-0bb47a1cb0bd', 'admin@gmail.com', 'admin', '$2b$10$z.D59r2NBFgvwVZf0T1vee64XHWhUaDQ.AuTfOxeVY0LdKUMTGkna'), -- Unhashed password: admin
