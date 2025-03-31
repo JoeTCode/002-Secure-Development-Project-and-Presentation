@@ -26,7 +26,7 @@ Posts are loaded from the PostgreSQL database. Posts are loaded on three differe
 
 - Built using Node 20.x.x, please have a similar version.
 - **Docker desktop** is needed to run this app, please download the latest version for your machine [here.](https://www.docker.com/products/docker-desktop/)
-- Please **download the .env file** from our shared [Trello board](https://trello.com/b/iofxikyy/dss2024-25-002-ug29) in the **relevant documents list**, otherwise the app wont run.
+- Please **download** the `.env file` from our shared [Trello board](https://trello.com/b/iofxikyy/dss2024-25-002-ug29) in the **relevant documents list**, otherwise the app wont run.
 
 # How to start the app
 
