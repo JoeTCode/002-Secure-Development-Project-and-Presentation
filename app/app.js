@@ -46,6 +46,7 @@ app.get('/', async (req, res) => {
     // Get IP address of user
     const clientIp = requestIp.getClientIp(req);
 
+    // Get users previous login attempts (if it exists)
     const checkSql = 'SELECT * FROM login_attempts WHERE ip = $1';
     const checkValue = [clientIp];
     const checkResult = await pool.query(checkSql, checkValue);
@@ -56,15 +57,17 @@ app.get('/', async (req, res) => {
         attempts = checkResult.rows[0].attempts;
     };
 
+    // If user has no recorded attempts, allow normal login flow
+     if (!attempts) {
+        return res.render('login', { errorMessage: null, loginLimit: false });
+    };
+    // If attempts are below the limit allow normal login flow
     if (attempts < loginLimit) {
-        /// send the static file
         return res.render('login', { errorMessage: null, loginLimit: false });
     } ;
+    // IF attempts exceed limit, generate CAPTCHA 
     if (attempts >= loginLimit) {
         return res.render('login', { errorMessage: null, loginLimit: true });
-    };
-    if (!attempts) {
-        return res.render('login', { errorMessage: null, loginLimit: false });
     };
     
 });
@@ -129,11 +132,13 @@ app.post('/', async (req, res) => {
 
         let match = false
 
+        // Check if user password matches password in DB
         if (result.rows[0]) {
             const hashed_password_from_db = result.rows[0].password;
             match = await bcrypt.compare(input_password, hashed_password_from_db);
         }
 
+        // Get previous login attempts
         const checkSql = 'SELECT * FROM login_attempts WHERE ip = $1';
         const checkValue = [clientIp];
         const checkResult = await pool.query(checkSql, checkValue);
@@ -141,36 +146,41 @@ app.post('/', async (req, res) => {
         let attempts = 0;
         let last_attempt = null;
 
+        // If previous login attempts found, set attempt details
         if (checkResult.rows[0]) {
             attempts = checkResult.rows[0].attempts;
             last_attempt = checkResult.rows[0].last_attempt;
             firstLoginAttempt = false;
         }
 
+        // If login limit reached, no CAPTCHA was submitted and the user did not successfully login, render CAPTCHA
         if (attempts >= loginLimit && !responseToken && !match) {
             console.log('0')
             return res.render('login', { errorMessage: null, loginLimit: true });
         };
 
+        // If the user submitted a CAPTCHA, check if they successfully completed it
         if (responseToken && attempts >= loginLimit) {
             passedReCaptcha = await checkReCaptcha(responseToken);
         };
 
+        // If the user did not pass the CAPTCHA, re-render CAPTCHA
         if (!passedReCaptcha && attempts >= loginLimit) {
             console.log('1');
             return res.render('login', {errorMessage: null, loginLimit: true});
         };
         
-        // NEED TO RESET LIMIT IF REPCAPTCHA COMPLETED, ELSE NOT
         // If attempt limit reached and unsuccessful login, render reCAPTCHA
         if (attempts >= loginLimit && !match) {
             console.log('2');
             return res.render('login', { errorMessage: null, loginLimit: true });
         };
 
-        // If attempts below limit, but unsuccessful login, increment the number of attempts
-        if (attempts < loginLimit && !match) { // This handles null values too, as null = 0
-            if (!firstLoginAttempt) { // Ensures the user has recorded previous login attempts
+        // If user's login attempts are below the limit, but failed to login, increment the number of attempts
+        if (attempts < loginLimit && !match) {
+            // If its not the user's first attempt
+            if (!firstLoginAttempt) {
+                // If the user's last attempt is recent, increment attempts
                 if (isRecentAttempt(last_attempt, process.env.FAILED_LOGIN_RESET_WINDOW_HRS)) {
                     attempts += 1
                     const incrementSql = 'UPDATE login_attempts SET attempts = $1, last_attempt = NOW() WHERE ip = $2';
@@ -179,22 +189,23 @@ app.post('/', async (req, res) => {
                     console.log('3');
                     return res.render('login', {errorMessage: 'Invalid username or password', loginLimit: false});
 
-                } else {
-                    const incrementSql = 'UPDATE login_attempts SET attempts = 0, last_attempt = NOW() WHERE ip = $1';
+                } 
+                // If the users last login attempt was not recent, reset their attempts count to 1 (as they failed to login)
+                else {
+                    const incrementSql = 'UPDATE login_attempts SET attempts = 1, last_attempt = NOW() WHERE ip = $1';
                     const incrementValues = [clientIp];
                     await pool.query(incrementSql, incrementValues);
                     console.log('4');
                     return res.render('login', {errorMessage: 'Invalid username or password', loginLimit: false});
-                }
+                };
 
-            } else { // User has no recorded login attempts, there we will create a new record
-                attempts = 1
-                const incrementSql = 'INSERT INTO login_attempts(ip, attempts, last_attempt) VALUES($1, $2, NOW())';
-                const incrementValues = [clientIp, attempts];
-                await pool.query(incrementSql, incrementValues);
+            } else { // User has no recorded login attempts, we will create a new record, and set login attempts to 1
+                const incrementSql = 'INSERT INTO login_attempts(ip, attempts, last_attempt) VALUES($1, 1, NOW())';
+                const incrementValue = [clientIp];
+                await pool.query(incrementSql, incrementValue);
                 console.log('5');
                 return res.render('login', {errorMessage: 'Invalid username or password', loginLimit: false});
-            }
+            };
             
         }
 
@@ -202,7 +213,7 @@ app.post('/', async (req, res) => {
         
         if (match) { // Login success, reset any existing login attempts
             
-            // If attempts is not null (the user has had previous login attempts)
+            // If the user has had previous login attempts
             if (!firstLoginAttempt) {
                 const resetSql = 'UPDATE login_attempts SET attempts = 0, last_attempt = NOW() WHERE ip = $1';
                 const resetValue = [clientIp];
