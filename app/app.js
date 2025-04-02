@@ -87,7 +87,8 @@ app.post('/register', async (req, res) => {
     
     try {
         // Password Hashing and Salting
-        const hashed_password = bcrypt.hash(password, saltRounds) 
+        const hashed_password = await bcrypt.hash(password, saltRounds) 
+
         // Generating UUID for ID column of Users db
         const uuid = uuidv4()
         // Email encryption
@@ -95,7 +96,9 @@ app.post('/register', async (req, res) => {
 
         const sql = 'INSERT INTO users(id, email, username, password) VALUES($1, $2, $3, $4) RETURNING *';
         const values = [uuid, email, username, hashed_password];
-        const result = await pool.query(sql, values);                  
+        const result = await pool.query(sql, values); 
+
+        res.render('login', { errorMessage: null, loginLimit: false});                 
 
     } catch (err) {
         if (err.code == 23505) {
