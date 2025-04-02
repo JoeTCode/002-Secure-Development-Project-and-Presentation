@@ -13,6 +13,7 @@ import { encrypt, decrypt } from './utils/encryptDecrypt.js';
 import requestIp from 'request-ip';
 import { isRecentAttempt } from './utils/time.js';
 import { checkReCaptcha } from './utils/reCaptcha.js';
+import { updateLoginAttempts } from './utils/loginAttempts.js';
 
 const saltRounds = 10;
 const __filename = fileURLToPath(import.meta.url);
@@ -72,37 +73,6 @@ app.get('/', async (req, res) => {
     
 });
 
-async function updateLoginAttempts(match, attempts, isFirstLoginAttempt, last_attempt, clientIp) {
-    
-    if (match) return attempts;
-
-    if (attempts == loginLimit) attempts -=1;
-
-    // If its not the user's first attempt
-    if (!isFirstLoginAttempt) {
-        // If the user's last attempt is recent, increment attempts
-        if (isRecentAttempt(last_attempt, process.env.FAILED_LOGIN_RESET_WINDOW_HRS)) {
-            attempts += 1
-            const incrementSql = 'UPDATE login_attempts SET attempts = $1, last_attempt = NOW() WHERE ip = $2';
-            const incrementValues = [attempts, clientIp];
-            await pool.query(incrementSql, incrementValues);
-        } 
-        // If the users last login attempt was not recent, reset their attempts count to 1
-        else {
-            attempts = 1
-            const incrementSql = 'UPDATE login_attempts SET attempts = $1, last_attempt = NOW() WHERE ip = $2';
-            const incrementValues = [attempts, clientIp];
-            await pool.query(incrementSql, incrementValues);
-        };
-
-    } else { // User has no recorded login attempts, we will create a new record, and set login attempts to 1
-        attempts = 1
-        const incrementSql = 'INSERT INTO login_attempts(ip, attempts, last_attempt) VALUES($1, $2, NOW())';
-        const incrementValues = [clientIp, attempts];
-        await pool.query(incrementSql, incrementValues);
-    };
-    return attempts;
-};
 
 // POST routes
 
@@ -121,6 +91,8 @@ app.post('/', async (req, res) => {
     let passedReCaptcha = true;
 
     let isFirstLoginAttempt = true;
+    let attempts = 0;
+    let last_attempt = null;
 
     try {
         
@@ -128,21 +100,18 @@ app.post('/', async (req, res) => {
         const values = [input_username];
         const result = await pool.query(sql, values);
 
-        let match;
+        let authenticated;
 
         // Check if user password matches password in DB
         if (result.rows[0]) {
             const hashed_password_from_db = result.rows[0].password;
-            match = await bcrypt.compare(input_password, hashed_password_from_db);
-        } else match = false;
+            authenticated = await bcrypt.compare(input_password, hashed_password_from_db);
+        } else authenticated = false;
 
         // Get previous login attempts
         const checkSql = 'SELECT * FROM login_attempts WHERE ip = $1';
         const checkValue = [clientIp];
         const checkResult = await pool.query(checkSql, checkValue);
-
-        let attempts = 0;
-        let last_attempt = null;
 
         // If previous login attempts found, set attempt details
         if (checkResult.rows[0]) {
@@ -152,47 +121,34 @@ app.post('/', async (req, res) => {
         };
 
         // Validates and updates login attempts if necessary
-        attempts = updateLoginAttempts(match, attempts, isFirstLoginAttempt, last_attempt, clientIp);
-
-        // If attempts == loginLimit and !responseToken 
-        // If attempts == loginLimit and no match, render captcha
-        // If attempts == loginLimit and match, render home page
-        // IF attempts == loginLimit
-
-        // If login limit reached, no CAPTCHA was submitted and the user did not successfully login, render CAPTCHA
-        if (attempts >= loginLimit && !responseToken && !match) {
-            console.log('0')
-            return res.render('login', { errorMessage: 'Invalid username or password', loginLimit: true });
-        };
-
-         // If login limit reached, no CAPTCHA was submitted and the user provided correct login details, render CAPTCHA
-         if (attempts > loginLimit && !responseToken && match) {
-            console.log('0')
-            return res.render('login', { errorMessage: 'Please complete the CAPTCHA', loginLimit: true });
-        };
+        attempts = await updateLoginAttempts(authenticated, attempts, isFirstLoginAttempt, last_attempt, clientIp);
 
         // If the user submitted a CAPTCHA, check if they successfully completed it
-        if (responseToken && attempts >= loginLimit) {
+        if (responseToken && attempts == loginLimit) {
             passedReCaptcha = await checkReCaptcha(responseToken);
         };
 
-        // If the user did not pass the CAPTCHA, re-render CAPTCHA
-        if (!passedReCaptcha && attempts >= loginLimit) {
-            console.log('1');
-            return res.render('login', {errorMessage: 'You did not pass the CAPTCHA', loginLimit: true});
+        // If no CAPTCHA was submitted, and the user reached login limit, they failed CAPTCHA
+        if (!responseToken && attempts == loginLimit) {
+            passedReCaptcha = false;
         };
-        
-        // If attempt limit reached and unsuccessful login, render reCAPTCHA
-        if (attempts >= loginLimit && !match) {
-            console.log('2');
+
+        // If user failed a login but is below attempt limit, increment total login attempts  
+        if (attempts < loginLimit && !authenticated) {
+            return res.render('login', { errorMessage: 'Invalid username or password', loginLimit: false });
+        };
+
+        // If the user is at login limit, and failed the CAPTCHA, render CAPTCHA
+        if (attempts == loginLimit && !passedReCaptcha) {
+            return res.render('login', { errorMessage: 'Please successfully complete the CAPTCHA', loginLimit: true });
+        };
+
+        // If user is at login limit, passed CAPTCHA, but failed to login, render CAPTCHA
+        if (attempts == loginLimit && passedReCaptcha && !authenticated) {
             return res.render('login', { errorMessage: 'Invalid username or password', loginLimit: true });
         };
-
         
-
-        // else if attempt == 3 or attempt < 3 AND match, then continue to login and reset limit
-        
-        if (match) { // Login success, reset any existing login attempts
+        if (authenticated) { // Login success, reset any existing login attempts, then redirect to home page after setting JWT
             
             // If the user has had previous login attempts
             if (!isFirstLoginAttempt) {
@@ -204,9 +160,9 @@ app.post('/', async (req, res) => {
                 const incrementSql = 'INSERT INTO login_attempts(ip, attempts, last_attempt) VALUES($1, 0, NOW())';
                 const incrementValue = [clientIp];
                 await pool.query(incrementSql, incrementValue);
-            }
+            };
     
-            const { id, email, username } = result.rows[0]
+            const { id, email, username } = result.rows[0];
             // const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
             const token = jwt.sign({"id": id, "email": email, "username": username}, process.env.MY_SECRET, { expiresIn: "30m" });
             
@@ -217,10 +173,10 @@ app.post('/', async (req, res) => {
                 // maxAge: 1000000, (sets cookie timeout)
                 // signed: true,
             });
-            console.log('6');
+
             // Redirect to home page
             return res.redirect('index');
-        }
+        };
 
     } catch (err) {
         console.error(err);
