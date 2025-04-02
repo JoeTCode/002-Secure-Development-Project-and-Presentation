@@ -1,7 +1,7 @@
 # DSS Food Blog
 
 This is the front-end for your DSS Blog. It has a "Login" page, a "Home" page, a "Posts" page, and a "My Posts" page. It includes
-functional login, plus search, add, edit and delete of posts using local JSON files. You will update the functionality through the completion of your assignment.
+functional login, plus search, add, edit and delete of posts by interacting with a PostgreSQL docker container. You will update the functionality through the completion of your assignment.
 
 ---- Handling posts -----
 Posts can be searched using the search bar. See my_posts.js or posts.js for the function that handles this.
@@ -24,13 +24,13 @@ Posts are loaded from the PostgreSQL database. Posts are loaded on three differe
 
 # Pre-requisites
 
-- Built using Node 20.x.x, please have a similar version.
-- **Docker desktop** is needed to run this app, please download the latest version for your machine [here.](https://www.docker.com/products/docker-desktop/)
-- Please **download** the `.env file` from our shared [Trello board](https://trello.com/b/iofxikyy/dss2024-25-002-ug29) in the **relevant documents list**, otherwise the app wont run.
+- Built using Node 20.x.x, please use a similar version.
+- **Docker desktop** is needed to run this app, please [download](https://www.docker.com/products/docker-desktop/) the latest version for your machine.
+- Please **download** the `.env` file from our shared [Trello board](https://trello.com/b/iofxikyy/dss2024-25-002-ug29) in the **relevant documents list**, otherwise the app will not run.
 
 # How to start the app
 
-Normal Flow:
+**Normal Flow:**
 
 1. `docker compose up --build` to start the app. After running docker for the first time with the `--build` flag, you can subsequently omit this to speed up the load time.
 
@@ -38,7 +38,7 @@ Normal Flow:
 
 3. `docker compose down` to clean up the environment (removes containers but preserves the DB data).
 
-Making changes to DB Flow:
+**Making changes to DB Flow:**
 
 1. `Control + C` to stop the app.
 
@@ -52,9 +52,9 @@ Making changes to DB Flow:
 
 `docker compose down -v` cleans up the environment, frees up system resources, and removes all stored data in the database(s).
 
-Additional note:
+**Additional note(s):**
 
-After altering the .env file, you need to rerun the docker container using:
+After altering the `.env` file you need to rerun the docker container to implement the changes, using:
 - `Control + C` to stop the app (if the app is running)
 - `docker compose down`
 - `docker compose up`
