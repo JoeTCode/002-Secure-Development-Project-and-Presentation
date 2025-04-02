@@ -121,7 +121,7 @@ app.post('/', async (req, res) => {
         };
 
         // Validates and updates login attempts if necessary
-        attempts = await updateLoginAttempts(authenticated, attempts, isFirstLoginAttempt, last_attempt, clientIp);
+        attempts = await updateLoginAttempts(authenticated, attempts, isFirstLoginAttempt, last_attempt, clientIp, loginLimit, isRecentAttempt, pool);
 
         // If the user submitted a CAPTCHA, check if they successfully completed it
         if (responseToken && attempts == loginLimit) {

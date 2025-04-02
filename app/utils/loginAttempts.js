@@ -1,4 +1,4 @@
-export async function updateLoginAttempts(match, attempts, isFirstLoginAttempt, last_attempt, clientIp) {
+export async function updateLoginAttempts(match, attempts, isFirstLoginAttempt, last_attempt, clientIp, loginLimit, isRecentAttempt, pool) {
     
     if (match) return attempts;
 
