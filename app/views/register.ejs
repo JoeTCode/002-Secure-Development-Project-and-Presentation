@@ -15,7 +15,7 @@
         <p>Please provide your details to continue.</p>
         
         <% if (errorMessage) { %>
-            <p style="color: red;"><%= errorMessage %></p>
+            <p style="color: red;"><%- errorMessage %></p>
         <% } %>
 
         <form method="post" action="/register" id="register_form">

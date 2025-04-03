@@ -14,6 +14,7 @@ import requestIp from 'request-ip';
 import { isRecentAttempt } from './utils/time.js';
 import { checkReCaptcha } from './utils/reCaptcha.js';
 import { updateLoginAttempts } from './utils/loginAttempts.js';
+import { passwordStrengthChecker, passedChecker, createErrorMessage } from './utils/passwordStrength.js';
 
 const saltRounds = 10;
 const __filename = fileURLToPath(import.meta.url);
@@ -192,6 +193,14 @@ app.post('/register', async (req, res) => {
     if (!email|| !username || !password) {
         return res.render('register', { errorMessage: 'Invalid details.' })
     }
+
+    const checkDict = passwordStrengthChecker(password, username);
+    console.log(checkDict);
+    
+    if (!passedChecker(checkDict)) {
+        const errorMessage = createErrorMessage(checkDict);
+        return res.render('register', { errorMessage: errorMessage});
+    };
     
     try {
         // Password Hashing and Salting
