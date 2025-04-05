@@ -199,7 +199,7 @@ app.post('/register', async (req, res) => {
     
     if (!passedChecker(checkDict)) {
         const errorMessage = createErrorMessage(checkDict);
-        return res.render('register', { errorMessage: errorMessage});
+        return res.render('register', { errorMessage: errorMessage, previousData: req.body });
     };
     
     try {
@@ -290,7 +290,7 @@ app.get('/logout', (req, res) => {
 })
 
 app.get('/register', (req, res) => {
-    res.render('register', { errorMessage: null });
+    res.render('register', { errorMessage: null, previousData: null });
 });
 
 app.get('/index', cookieJwtAuth, (req ,res) => {

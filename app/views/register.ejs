@@ -18,15 +18,18 @@
             <p style="color: red;"><%- errorMessage %></p>
         <% } %>
 
+        <% console.log('hello', previousData); %>
+
+
         <form method="post" action="/register" id="register_form">
             <label for="email_input">Email:</label>
-            <input type="email" id="email_input" name="email_input" placeholder="Please enter your email..." required/>
+            <input type="email" id="email_input" name="email_input" placeholder="Please enter your email..." value="<%= previousData ? previousData.email_input : '' %>" required/>
 
             <label for="username_input">Username:</label>
-            <input type="text" id="username_input" name="username_input" placeholder="Please enter your username..." required/>
+            <input type="text" id="username_input" name="username_input" placeholder="Please enter your username..." value="<%= previousData ? previousData.username_input : '' %>" required/>
 
             <label for="password_input">Password:</label>
-            <input type="password" id="password_input" name="password_input" placeholder="Please enter your password..." required/>
+            <input type="password" id="password_input" name="password_input" placeholder="Please enter your password..." value="<%= previousData ? previousData.password_input : '' %>" required/>
 
             <button id="register_btn" type="submit">Register</button>
         </form>

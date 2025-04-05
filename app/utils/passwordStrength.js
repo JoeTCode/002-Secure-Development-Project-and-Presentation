@@ -84,10 +84,10 @@ export function createErrorMessage(dict) {
         '<p style="color: green;"> - Is greater than ' + process.env.MIN_LENGTH + ' character(s) long.</p>',
         '<p style="color: green;"> - Is less than ' + process.env.MAX_LENGTH + ' character(s) long.</p>',
         '<p style="color: green;"> - Does not include any part of your username.</p>',
-        '<p style="color: green;"> - Has at least ' + process.env.NUM_SPECIAL_CHARACTERS + ' special character(s).</p>',
+        '<p style="color: green;"> - Has at least ' + process.env.NUM_SPECIAL_CHARACTERS + ' special character(s), (e.g., !, @, #, $, %).</p>',
         '<p style="color: green;"> - Has at least ' + process.env.NUM_UPPERCASE_CHARACTERS + ' uppercase character(s).</p>',
         '<p style="color: green;"> - Has at least ' + process.env.NUM_LOWERCASE_CHARACTERS + ' lowercase character(s).</p>',
-        '<p style="color: green;"> - Has at least ' + process.env.NUM_NUMBERS + ' numerical digit(s).</p>'
+        '<p style="color: green;"> - Has at least ' + process.env.NUM_NUMBERS + ' numerical character(s).</p>'
     ];
     
     for (let key in dict) {
@@ -103,7 +103,7 @@ export function createErrorMessage(dict) {
                     errorMessage[3] = '<p style="color: red;"> - Does not include any part of your username.</p>';
                     break;
                 case "minSpecialCharsExceeded":
-                    errorMessage[4] = '<p style="color: red;"> - Has at least ' + process.env.NUM_SPECIAL_CHARACTERS + ' special character(s).</p>';
+                    errorMessage[4] = '<p style="color: red;"> - Has at least ' + process.env.NUM_SPECIAL_CHARACTERS + ' special character(s), (e.g., !, @, #, $, %).</p>';
                     break;
                 case "minUpperCharsExceeded":
                     errorMessage[5] = '<p style="color: red;"> - Has at least ' + process.env.NUM_UPPERCASE_CHARACTERS + ' uppercase character(s).</p>';
@@ -112,7 +112,7 @@ export function createErrorMessage(dict) {
                     errorMessage[6] = '<p style="color: red;"> - Has at least ' + process.env.NUM_LOWERCASE_CHARACTERS + ' lowercase character(s).</p>';
                     break;
                 case "minNumsExceeded":
-                    errorMessage[7] = '<p style="color: red;"> - Has at least ' + process.env.NUM_NUMBERS + ' numerical digit(s).</p>';
+                    errorMessage[7] = '<p style="color: red;"> - Has at least ' + process.env.NUM_NUMBERS + ' numerical character(s).</p>';
                     break;
             };
         };

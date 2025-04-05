@@ -42,10 +42,6 @@ function validatePassword() {
     if (passed(checkDict)) return passwordValid = true;
 
     renderAlertBox(passwordContainer, checkDict);
-    // Fill out form fields with data grabbed from post
-    // document.getElementById("email_input").value = 
-    // document.getElementById("username_input").value = username;
-    // document.getElementById("password_input").value = password;
 }
 
 function validateForm(e) {
