@@ -39,23 +39,6 @@ app.use(
 app.use(passport.initialize());
 // Enable Passport persistent sessions (uses express-session)
 app.use(passport.session());
-
-// app.get("/index", (req, res) => {
-//     if (!req.isAuthenticated()) {
-//         console.log('isAuthenticated() denied access to route')
-//         return res.redirect("/");
-//     }
-//     res.render("index", { user: req.user });
-// });
-
-// app.get('/logout', (req, res) => {
-//     req.logout((err) => {
-//         if (err) { return next(err); }
-//         req.session.destroy(() => {
-//             res.redirect('/');
-//         });
-//     });
-// });
  
 // Setting EJS as the view engine
 app.set('view engine', 'ejs');
@@ -477,10 +460,16 @@ app.get("/index/google/callback",
     }
 );
 
+// req.logout() is normally only for used oAuth. For website login we only need clearCookie(), but for simplicities sake we are calling both for either case
 app.get('/logout', (req, res) => {
-    res.clearCookie("token");
-    res.redirect('/');
-})
+    req.logout((err) => {
+        if (err) { return next(err); }
+        req.session.destroy(() => {
+            res.clearCookie("token");
+            res.redirect('/');
+        });
+    });
+});
 
 app.get('/register', (req, res) => {
     res.render('register', { errorMessage: null, previousData: null });
@@ -488,15 +477,15 @@ app.get('/register', (req, res) => {
 
 app.get('/index', cookieJwtAuth, (req ,res) => {
     res.render('index', { user: req.user });
-})
+});
 
 app.get('/posts', cookieJwtAuth, (req ,res) => {
     res.render('posts', { user: req.user });
-})
+});
 
 app.get('/my_posts', cookieJwtAuth, (req ,res) => {
     res.render('my_posts', { user: req.user });
-})
+});
 
 
 // API routes
