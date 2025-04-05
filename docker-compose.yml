@@ -4,7 +4,6 @@ services:
     container_name: postgres_db
     restart: unless-stopped
     environment:
-      - DEBUG "true"
       - POSTGRES_USER=$POSTGRESDB_USER
       - POSTGRES_PASSWORD=$POSTGRESDB_ROOT_PASSWORD
       - POSTGRES_DB=$POSTGRESDB_DATABASE
