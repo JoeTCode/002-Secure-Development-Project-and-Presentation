@@ -1,14 +1,16 @@
 import jwt from 'jsonwebtoken';
 
 export const cookieJwtAuth = (req, res, next) => {
+    
     const token = req.cookies.token;
-
+    console.log('test');
     if (!token) {
         console.log('No token found in cookies');
         return res.redirect('/'); // No token, redirect to login
     }
 
     try {
+        console.log("Token found in JWT");
         // Verify the JWT token with your secret
         const user = jwt.verify(token, process.env.MY_SECRET);
         

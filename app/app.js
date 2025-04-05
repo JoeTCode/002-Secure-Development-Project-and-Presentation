@@ -1,25 +1,19 @@
 import express from 'express';
-import { pool } from './db.js'; //Import the database connection pool
-import bodyParser from 'body-parser'; //Middleware to parse request bodies
-import fs from 'fs'; 
-import { fileURLToPath } from 'url'; //Used for retrieving current file's path
-import { dirname } from 'path'; //Used to get the directory name from a path
-import bcrypt from "bcryptjs"; //Library for password hashing
-import { v4 as uuidv4 } from 'uuid'; //Library to generate UUIDs (Univerisally Unique Identifiers)
-import cookieParser from 'cookie-parser'; //Middleware to parse and set cookies 
+import { pool } from './db.js'; // Import the database connection pool
+import bodyParser from 'body-parser'; // Middleware to parse request bodies
+import { fileURLToPath } from 'url'; // Used for retrieving current file's path
+import { dirname } from 'path'; // Used to get the directory name from a path
+import bcrypt from "bcryptjs"; // Library for password hashing
+import { v4 as uuidv4 } from 'uuid'; // Library to generate UUIDs (Univerisally Unique Identifiers)
+import cookieParser from 'cookie-parser'; // Middleware to parse and set cookies 
 import jwt from 'jsonwebtoken'; // Library which helps for the creation and verfication of JSON Web Tokens
 import { cookieJwtAuth } from './middleware/cookieJwtAuth.js'; // Custom middleware for JWT-based authentication
-import { encrypt, decrypt } from './utils/encryptDecrypt.js';
-import requestIp from 'request-ip'; //Middleware which retrieves a User's IP address
-import { isRecentAttempt } from './utils/time.js'; //Utility function to check if a time is recent
-import { checkReCaptcha } from './utils/reCaptcha.js'; //Utility function to verify reCAPTCHA responses
-import passport from 'passport'; //Authentication middleware for Node.js
-import session from 'express-session'; //Passport strategy for Google OAuth 2.0
+import requestIp from 'request-ip'; // Middleware which retrieves a User's IP address
+import passport from 'passport'; // Authentication middleware for Node.js
+import passportConfig from './passport/passportConfig.js';
+import session from 'express-session'; // Passport strategy for Google OAuth 2.0
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import dotenv from 'dotenv'; //Helps load environment variables from a .env file
-dotenv.config();
-import { updateLoginAttempts } from './utils/loginAttempts.js';
-import { passwordStrengthChecker, passedChecker, createErrorMessage } from './utils/passwordStrength.js';
+import { encrypt, decrypt, isRecentAttempt, checkReCaptcha, updateLoginAttempts, passwordStrengthChecker, passwordComplies, createErrorMessage } from './utils/index.js';
 
 const saltRounds = 10; //Number of Salt rounds for Bcrypt password hashing 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,126 +27,35 @@ app.use(
         secret: process.env.SESSION_SECRET || "secret",
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: false, // Allows cookies over non-HTTPS
-            httpOnly: true, // Prevents client-side Javascript from Acessing the cookie
-            sameSite: "lax" // Provide some protection against cross-site request forgery (CSRF)
+        cookie: { 
+            secure: false, // Allows cookies over non-HTTPS
+            httpOnly: process.env.HTTP_ONLY, // Prevents client-side Javascript from Acessing the cookie
+            sameSite: process.env.SAMESITE // Provide some protection against cross-site request forgery (CSRF)
          } 
     })
 );
 
 // Intialize passport middleware 
 app.use(passport.initialize());
-// Enable Passport persistent sessions (uses exxpress-session)
+// Enable Passport persistent sessions (uses express-session)
 app.use(passport.session());
 
-passport.use(
-    new GoogleStrategy(
-        {
-            clientID: process.env.GOOGLE_CLIENT_ID, // Google OAuth Client ID from environment variable
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET, // Google OAuth Secret ID from environment variable
-            callbackURL: 'http://localhost:3000/index/google/callback', //URL google will redirect to after authentication
-        },
-        async (accessToken, refreshToken, profile, done) => {
-            try {
-                const { id, displayName, emails } = profile;
-                const email = emails[0]?.value;
+// app.get("/index", (req, res) => {
+//     if (!req.isAuthenticated()) {
+//         console.log('isAuthenticated() denied access to route')
+//         return res.redirect("/");
+//     }
+//     res.render("index", { user: req.user });
+// });
 
-                if (!email) {
-                    return done(new Error('No email found in profile'));
-                }
-
-                // Check if user exists
-                const checkUserSql = 'SELECT * FROM users WHERE email = $1';
-                const checkUserValues = [email];
-                const checkUserResult = await pool.query(checkUserSql, checkUserValues);
-
-                if (checkUserResult.rows.length > 0) {
-                    return done(null, checkUserResult.rows[0]);
-                }
-
-                // Generate a UUID for the user if profile.id is not a valid UUID
-                const userId = uuidv4();  // Generates a new valid UUID
-
-                // Set a default password or empty string (if password is not needed for Google login)
-                const defaultPassword = '';  // or use some default value
-                const newUserSql = 'INSERT INTO users(id, email, username, password) VALUES($1, $2, $3, $4) RETURNING *';
-                const newUserValues = [userId, email, displayName, defaultPassword];
-                const newUserResult = await pool.query(newUserSql, newUserValues);
-
-                return done(null, newUserResult.rows[0]);
-            } catch (err) {
-                console.error("Error during Google Auth:", err);
-                return done(err);
-            }
-        }
-    )
-);
-
-passport.serializeUser(function(user, done) {
-    // Serialize the user by saving the user's id into the session
-    done(null, user.id);  // 'user.id' should be a unique identifier like UUID
-});
-
-passport.deserializeUser(async function(id, done) {
-    try {
-        // Retrieve the full user record from the database using the id (or username)
-        const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-        if (result.rows.length > 0) {
-            done(null, result.rows[0]);  // If user found, pass the user object to 'done'
-        } else {
-            done(null, false);  // If user not found, return false (deserialization failed)
-        }
-    } catch (err) {
-        done(err);  // Pass any error to 'done'
-    }
-});
-
-
-app.get(
-    "/index/google",
-    passport.authenticate("google",{ scope: ["profile", "email"]})
-);
-
-app.get("/index/google/callback",
-    passport.authenticate("google", { failureRedirect: "/" }),
-    async (req, res) => {
-        console.log("Google Auth Successful, user:", req.user);
-
-        // Generate a JWT token
-        const { id, email, username } = req.user;
-        const token = jwt.sign({ "id": id, "email": email, "username": username }, process.env.MY_SECRET, { expiresIn: "30m" });
-
-        // Set the JWT cookie
-        res.cookie("token", token, {
-            httpOnly: true,
-            sameSite: "Strict",
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 30 * 60 * 1000,
-        });
-
-        res.redirect("/index"); // Redirect to home page
-    }
-);
-
-app.get("/index", (req, res) => {
-    if (!req.isAuthenticated()) {
-        return res.redirect("/");
-    }
-    res.render("index", { user: req.user });
-});
-
-
-
-
-app.get('/logout', (req, res) => {
-    req.logout((err) => {
-        if (err) { return next(err); }
-        req.session.destroy(() => {
-            res.redirect('/');
-        });
-    });
-});
-
+// app.get('/logout', (req, res) => {
+//     req.logout((err) => {
+//         if (err) { return next(err); }
+//         req.session.destroy(() => {
+//             res.redirect('/');
+//         });
+//     });
+// });
  
 // Setting EJS as the view engine
 app.set('view engine', 'ejs');
@@ -280,7 +183,7 @@ app.post('/', async (req, res) => {
         if (attempts == loginLimit && passedReCaptcha && !authenticated) {
             return res.render('login', { errorMessage: 'Invalid username or password', loginLimit: true });
         };
-        
+
         if (authenticated) { // Login success, reset any existing login attempts, then redirect to home page after setting JWT
             
             // If the user has had previous login attempts
@@ -298,7 +201,7 @@ app.post('/', async (req, res) => {
             const { id, email, username } = result.rows[0];
             // const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
             const token = jwt.sign({"id": id, "email": email, "username": username}, process.env.MY_SECRET, { expiresIn: "30m" });
-            
+
             res.cookie("token", token, {
                 httpOnly: process.env.HTTP_ONLY,
                 sameSite: process.env.SAMESITE,
@@ -327,7 +230,7 @@ app.post('/register', async (req, res) => {
     const checkDict = passwordStrengthChecker(password, username);
     console.log(checkDict);
     
-    if (!passedChecker(checkDict)) {
+    if (!passwordComplies(checkDict)) {
         const errorMessage = createErrorMessage(checkDict);
         return res.render('register', { errorMessage: errorMessage, previousData: req.body });
     };
@@ -476,22 +379,12 @@ app.post('/', async (req, res) => {
             const { id, email, username } = result.rows[0]
             // const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
             const token = jwt.sign({"id": id, "email": email, "username": username}, process.env.MY_SECRET, { expiresIn: "30m" });
-            
-            res.cookie("token", token, {
-                httpOnly: true,
-                sameSite: "Strict",
-                secure: process.env.NODE_ENV === "production",  // Ensure cookies are only sent over HTTPS in production
-                maxAge: 30 * 60 * 1000,  // 30 minutes expiry
-            });            
-            console.log('6');
+                       
             // Redirect to home page
             return res.redirect('index');
         }
 
     } catch (err) {
-        console.error(err);
-    };
-});
         if (err.code == 23505) {
             return res.render('register', { errorMessage: 'Please choose a unique email or username.' })
         } 
@@ -500,7 +393,7 @@ app.post('/', async (req, res) => {
             return res.render('register', { errorMessage: 'An error occurred during registration. Please try again.'})
         };
     };
-})
+});
 
 // Make a post POST request
 app.post('/makepost', cookieJwtAuth, async (req, res) => {
@@ -557,6 +450,32 @@ app.post('/makepost', cookieJwtAuth, async (req, res) => {
 
 // GET routes
 
+
+app.get(
+    "/index/google",
+    passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get("/index/google/callback",
+    passport.authenticate("google", { failureRedirect: "/" }),
+    async (req, res) => {
+        console.log("Google Auth Successful, user:", req.user);
+
+        // Generate a JWT token
+        const { id, email, username } = req.user;
+        const token = jwt.sign({ "id": id, "email": email, "username": username }, process.env.MY_SECRET, { expiresIn: "30m" });
+
+        // Set the JWT cookie
+        res.cookie("token", token, {
+            httpOnly: process.env.HTTP_ONLY,
+            sameSite: process.env.SAMESITE,
+            secure: false,
+            maxAge: 30 * 60 * 1000, // minutes * seconds * milliseconds, which equals the 'minutes' value in milliseconds.
+        });
+
+        res.redirect("/index"); // Redirect to home page
+    }
+);
 
 app.get('/logout', (req, res) => {
     res.clearCookie("token");

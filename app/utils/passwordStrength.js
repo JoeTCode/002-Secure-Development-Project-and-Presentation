@@ -71,7 +71,7 @@ export function passwordStrengthChecker(password, username) {
     return followsFormat(password, minLength, maxLength, numSpecialCharacters, numUppercaseCharacters, numLowercaseCharacters, numNumbers, isUsernameInPass)
 };
 
-export function passedChecker(dict) {
+export function passwordComplies(dict) {
     for (let key in dict) {
         if (dict[key] == true) return false
     };
