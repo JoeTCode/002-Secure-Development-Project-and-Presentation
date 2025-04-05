@@ -18,6 +18,10 @@ import session from 'express-session'; //Passport strategy for Google OAuth 2.0
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import dotenv from 'dotenv'; //Helps load environment variables from a .env file
 dotenv.config();
+import requestIp from 'request-ip';
+import { isRecentAttempt } from './utils/time.js';
+import { checkReCaptcha } from './utils/reCaptcha.js';
+import { updateLoginAttempts } from './utils/loginAttempts.js';
 
 const saltRounds = 10; //Number of Salt rounds for Bcrypt password hashing 
 const __filename = fileURLToPath(import.meta.url);
@@ -170,7 +174,7 @@ app.use(bodyParser.json());
 // Prevents cookie from being tampered with
 app.use(cookieParser(process.env.SECRET_KEY)); 
 
-const loginLimit = process.env.LOGIN_ATTEMPT_LIMIT - 1
+const loginLimit = process.env.LOGIN_ATTEMPT_LIMIT
 
 // Login page
 app.get('/', async (req, res) => {
@@ -206,6 +210,113 @@ app.get('/', async (req, res) => {
 
 
 // POST routes
+
+// Login POST request
+app.post('/', async (req, res) => {
+
+    // Get username and password entered from user
+    var input_username = req.body.username_input;
+    var input_password = req.body.password_input;
+
+    // Get IP address of user
+    const clientIp = requestIp.getClientIp(req);
+
+    // Get ReCAPTCHA response token (if it exists)
+    const responseToken = req.body['g-recaptcha-response'];
+    let passedReCaptcha = true;
+
+    let isFirstLoginAttempt = true;
+    let attempts = 0;
+    let last_attempt = null;
+
+    try {
+        
+        const sql = 'SELECT * FROM users WHERE username=$1';
+        const values = [input_username];
+        const result = await pool.query(sql, values);
+
+        let authenticated;
+
+        // Check if user password matches password in DB
+        if (result.rows[0]) {
+            const hashed_password_from_db = result.rows[0].password;
+            authenticated = await bcrypt.compare(input_password, hashed_password_from_db);
+        } else authenticated = false;
+
+        // Get previous login attempts
+        const checkSql = 'SELECT * FROM login_attempts WHERE ip = $1';
+        const checkValue = [clientIp];
+        const checkResult = await pool.query(checkSql, checkValue);
+
+        // If previous login attempts found, set attempt details
+        if (checkResult.rows[0]) {
+            attempts = checkResult.rows[0].attempts;
+            last_attempt = checkResult.rows[0].last_attempt;
+            isFirstLoginAttempt = false;
+        };
+
+        // Validates and updates login attempts if necessary
+        attempts = await updateLoginAttempts(authenticated, attempts, isFirstLoginAttempt, last_attempt, clientIp, loginLimit, isRecentAttempt, pool);
+
+        // If the user submitted a CAPTCHA, check if they successfully completed it
+        if (responseToken && attempts == loginLimit) {
+            passedReCaptcha = await checkReCaptcha(responseToken);
+        };
+
+        // If no CAPTCHA was submitted, and the user reached login limit, they failed CAPTCHA
+        if (!responseToken && attempts == loginLimit) {
+            passedReCaptcha = false;
+        };
+
+        // If user failed a login but is below attempt limit, increment total login attempts  
+        if (attempts < loginLimit && !authenticated) {
+            return res.render('login', { errorMessage: 'Invalid username or password', loginLimit: false });
+        };
+
+        // If the user is at login limit, and failed the CAPTCHA, render CAPTCHA
+        if (attempts == loginLimit && !passedReCaptcha) {
+            return res.render('login', { errorMessage: 'Please successfully complete the CAPTCHA', loginLimit: true });
+        };
+
+        // If user is at login limit, passed CAPTCHA, but failed to login, render CAPTCHA
+        if (attempts == loginLimit && passedReCaptcha && !authenticated) {
+            return res.render('login', { errorMessage: 'Invalid username or password', loginLimit: true });
+        };
+        
+        if (authenticated) { // Login success, reset any existing login attempts, then redirect to home page after setting JWT
+            
+            // If the user has had previous login attempts
+            if (!isFirstLoginAttempt) {
+                const resetSql = 'UPDATE login_attempts SET attempts = 0, last_attempt = NOW() WHERE ip = $1';
+                const resetValue = [clientIp];
+                await pool.query(resetSql, resetValue);
+
+            } else {
+                const incrementSql = 'INSERT INTO login_attempts(ip, attempts, last_attempt) VALUES($1, 0, NOW())';
+                const incrementValue = [clientIp];
+                await pool.query(incrementSql, incrementValue);
+            };
+    
+            const { id, email, username } = result.rows[0];
+            // const decryptedEmail = await decrypt(email, process.env.KEY_PASSWORD);
+            const token = jwt.sign({"id": id, "email": email, "username": username}, process.env.MY_SECRET, { expiresIn: "30m" });
+            
+            res.cookie("token", token, {
+                httpOnly: process.env.HTTP_ONLY,
+                sameSite: process.env.SAMESITE,
+                // secure: true, (ensures cookie is only sent over https)
+                // maxAge: 1000000, (sets cookie timeout)
+                // signed: true,
+            });
+
+            // Redirect to home page
+            return res.redirect('index');
+        };
+
+    } catch (err) {
+        console.error(err);
+    };
+});
 
 // Register POST request
 app.post('/register', async (req, res) => {
@@ -375,6 +486,15 @@ app.post('/', async (req, res) => {
         console.error(err);
     };
 });
+        if (err.code == 23505) {
+            return res.render('register', { errorMessage: 'Please choose a unique email or username.' })
+        } 
+        // Redirect back to register page
+        else {
+            return res.render('register', { errorMessage: 'An error occurred during registration. Please try again.'})
+        };
+    };
+})
 
 // Make a post POST request
 app.post('/makepost', cookieJwtAuth, async (req, res) => {
