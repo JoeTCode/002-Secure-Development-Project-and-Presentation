@@ -18,9 +18,6 @@ import session from 'express-session'; //Passport strategy for Google OAuth 2.0
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import dotenv from 'dotenv'; //Helps load environment variables from a .env file
 dotenv.config();
-import requestIp from 'request-ip';
-import { isRecentAttempt } from './utils/time.js';
-import { checkReCaptcha } from './utils/reCaptcha.js';
 import { updateLoginAttempts } from './utils/loginAttempts.js';
 
 const saltRounds = 10; //Number of Salt rounds for Bcrypt password hashing 
